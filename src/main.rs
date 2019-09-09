@@ -26,10 +26,29 @@ fn git_diff(target: &str) -> Result<String, ScoutError> {
         .args(&["diff", target])
         .output()
         .expect("Could not run git command.");
-    if !cmd_output.status.success() {
-        Err(String::from_utf8(cmd_output.stderr)?.into())
-    } else {
+    if cmd_output.status.success() {
         Ok(String::from_utf8(cmd_output.stdout)?)
+    } else {
+        Err(String::from_utf8(cmd_output.stderr)?.into())
+    }
+}
+
+fn clippy_pedantic() -> Result<String, ScoutError> {
+    let cmd_output = Command::new("cargo")
+        .args(&[
+            "clippy",
+            "--message-format",
+            "json",
+            "--",
+            "-W",
+            "clippy::pedantic",
+        ])
+        .output()
+        .expect("Could not run clippy pedantic");
+    if cmd_output.status.success() {
+        Ok(String::from_utf8(cmd_output.stdout)?)
+    } else {
+        Err(String::from_utf8(cmd_output.stderr)?.into())
     }
 }
 
@@ -51,17 +70,7 @@ fn main() -> Result<(), ScoutError> {
     let target = matches.value_of("branch").unwrap_or("master");
 
     let diff = git_diff(target)?;
-    let clippy_pedantic_output = Command::new("cargo")
-        .args(&[
-            "clippy",
-            "--message-format",
-            "json",
-            "--",
-            "-W",
-            "clippy::pedantic",
-        ])
-        .output()
-        .expect("failed to run clippy pedantic");
+    let clippy_pedantic_output = clippy_pedantic()?;
 
     println!("{:#?}", diff);
 
